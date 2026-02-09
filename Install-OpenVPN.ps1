@@ -3,8 +3,9 @@
   [string]$ProfileFileName
 )
 
-if (-not $ProfileFileNam) {
-  $ProfileFileNam = Read-Host "Be sure the OVPN profile is downloaded in 'C:\Data\OpenVPN\'.`nEnter the '.ovpn' profile name to continue. e.g. 'CompanyVPN.ovpn'"
+if (-not $ProfileFileName) {
+  $ProfileFileName = Read-Host "Be sure the OVPN profile is downloaded in 'C:\Data\OpenVPN\'.`nEnter the '.ovpn' profile name to continue. e.g. 'CompanyVPN.ovpn'"
+
     }
 $PublicProfilePath = "C:\Data\OpenVPN\"
 $SourceProfilePath = Join-Path -Path $PSScriptRoot -ChildPath $ProfileFileName
