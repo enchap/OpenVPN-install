@@ -1,8 +1,3 @@
-# Variables
-$PublicProfilePath = "C:\Data\OpenVPN\"
-$ProfileFileName = "CambridgeVPN.ovpn"
-$SourceProfilePath = Join-Path -Path $PSScriptRoot -ChildPath $ProfileFileName
-
 # 1. Check Admin
 
 if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
@@ -10,15 +5,15 @@ if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
     Exit
 }
 
+# Variables
+$PublicProfilePath = "C:\Data\OpenVPN\"
+$ProfileFileName = "CambridgeVPN.ovpn"
+$SourceProfilePath = Join-Path -Path $PublicProfilePath -ChildPath $ProfileFileName
+
 # 2. Prepare Directory
 
 if (!(Test-Path -Path $PublicProfilePath)) {
     New-Item -ItemType Directory -Path $PublicProfilePath -Force | Out-Null
-}
-
-# Copy the OVPN profile to the public path if it exists locally
-if (Test-Path $SourceProfilePath) {
-    Copy-Item -Path $SourceProfilePath -Destination $PublicProfilePath -Force
 }
 
 # 3. Fetch Installer Metadata
