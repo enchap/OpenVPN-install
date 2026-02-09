@@ -46,7 +46,7 @@ $body = @{
 } | ConvertTo-Json
 
 Write-Host "Fetching installer." -ForegroundColor Cyan
-$response = Invoke-RestMethod -Uri "$baseUrl/dl/latest/openvpn/openvpn-installer/windows-x64/openvpn-connect.msi" -Method POST -Headers $headers -Body $body
+$response = Invoke-RestMethod -Uri "$baseUrl/api/v2/presign-latest" -Method POST -Headers $headers -Body $body
 
 # Set Installer Path to the Public Profile Path
 $InstallerPath = Join-Path -Path $PublicProfilePath -ChildPath $response.filename
@@ -84,3 +84,4 @@ if (Test-Path $ovpnExe) {
 }
 
 Write-Host "Setup complete." -ForegroundColor Green
+
