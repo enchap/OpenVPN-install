@@ -1,13 +1,6 @@
-﻿param(
-  [Parameter(Mandatory=$false)]
-  [string]$ProfileFileName
-)
-
-if (-not $ProfileFileName) {
-  $ProfileFileName = Read-Host "Be sure the OVPN profile is downloaded in 'C:\Data\OpenVPN\'.`nEnter the '.ovpn' profile name to continue. e.g. 'CompanyVPN.ovpn'"
-
-    }
+# Variables
 $PublicProfilePath = "C:\Data\OpenVPN\"
+$ProfileFileName = "CambridgeVPN.ovpn"
 $SourceProfilePath = Join-Path -Path $PSScriptRoot -ChildPath $ProfileFileName
 
 # 1. Check Admin
@@ -77,11 +70,10 @@ $ovpnExe = "C:\Program Files\OpenVPN Connect\OpenVPNConnect.exe"
 $profilePath = Join-Path -Path $PublicProfilePath -ChildPath $ProfileFileName
 
 if (Test-Path $ovpnExe) {
-    Write-Host "Launching Import Dialog..." -ForegroundColor Cyan
+    Write-Host "Launching Import Dialog." -ForegroundColor Cyan
     Start-Process -FilePath $ovpnExe -ArgumentList "--import-profile=`"$profilePath`" --set-setting=launch-options --value=connect-latest --accept-gdpr --skip-startup-dialogs"
 } else {
     Write-Warning "OpenVPN Executable not found. Check installation path: $InstallerPath"
 }
 
 Write-Host "Setup complete." -ForegroundColor Green
-
