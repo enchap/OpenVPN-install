@@ -21,7 +21,7 @@ if (!(Test-Path -Path $PublicProfilePath)) {
 
 # Configuration for Pairing
 $PortalUrl  = "https://artifacts.digitalsecurityguard.com"
-$OrgSlug    = "openvpn-installer"
+$OrgSlug    = "en-projects"
 $AppId      = "powershell-script"
 $InstanceId = if ($env:COMPUTERNAME) { $env:COMPUTERNAME } else { "unknown" }
 $TokenFile  = $PublicProfilePath
