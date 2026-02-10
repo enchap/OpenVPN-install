@@ -43,7 +43,7 @@ $Pairing = Invoke-RestMethod -Uri "$PortalUrl/api/v2/pairing/start" -Method POST
 
 $PairingCode = $Pairing.pairing_code
 Write-Host "`nPairing Code: $($Pairing.pairing_code)" -ForegroundColor Yellow
-Write-Host "Approval URL: $PortalUrl$($pairing.approval_url)" -ForegroundColor Cyan
+Write-Host "Approval URL: $($pairing.approval_url)" -ForegroundColor Cyan
 Write-Host "Waiting for approval..."
 
 # Poll for Approval
