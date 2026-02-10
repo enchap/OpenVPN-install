@@ -44,7 +44,7 @@ $Pairing = Invoke-RestMethod -Uri "$PortalUrl/api/v2/pairing/start" -Method POST
 $PairingCode = $Pairing.pairing_code
 $PairingURL = $Pairing.pairing_url
 Write-Host "`nPairing Code: $PairingCode" -ForegroundColor Yellow
-Write-Host "Approval URL: $PortalUrl$($PairingURL)" -ForegroundColor Cyan
+Write-Host "`nApproval URL: $PortalUrl$($PairingURL)" -ForegroundColor Cyan
 Write-Host "`nWaiting for approval..."
 
 # Poll for Approval
@@ -133,3 +133,4 @@ if (Test-Path $ovpnExe) {
 }
 
 Write-Host "Setup complete." -ForegroundColor Green
+
