@@ -1,11 +1,12 @@
 # 1. Check Admin
 
+$ErrorActionPreference = "Stop"
 if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
     Write-Warning "Please run as Administrator to install the software."
     Exit
 }
 
-# Variables
+# File Variables
 $PublicProfilePath = "C:\Data\OpenVPN\"
 $ProfileFileName = "CambridgeVPN.ovpn"
 $SourceProfilePath = Join-Path -Path $PublicProfilePath -ChildPath $ProfileFileName
@@ -18,22 +19,72 @@ if (!(Test-Path -Path $PublicProfilePath)) {
 
 # 3. Fetch Installer Metadata
 
-$token = "apt_Npg1WhCax9WmcktHOrbC2vYH_9PrrCl2jUuJGrzWsgY"
-$baseUrl = "https://artifacts.digitalsecurityguard.com"
+# Configuration for Pairing
+$PortalUrl = "https://artifacts.digitalsecurityguard.com"
+$OrgSlug   = "openvpn-installer"
+$AppId     = "powershell-script"
+$InstanceId = if ($env:COMPUTERNAME) { $env:COMPUTERNAME } else { "unknown" }
+$TokenFile = if ($env:TOKEN_FILE) { $env:TOKEN_FILE } else { "$PublicProfilePath" }
 
-$headers = @{
-    "Authorization" = "Bearer $token"
-    "Content-Type" = "application/json"
+if (-not $OrgSlug) {
+    Write-Error "ARTIFACT_PORTAL_ORG environment variable is required."
+    exit 1
 }
 
-$body = @{
-    project = "openvpn"
-    tool = "openvpn-installer"
-    platform_arch = "windows-x64"
-    latest_filename = "openvpn-connect.msi"
+# Start Pairing
+$Body = @{
+    org_slug    = $OrgSlug
+    app_id      = $AppId
+    instance_id = $InstanceId
+    hostname    = $InstanceId
+    platform    = "windows"
+    arch        = $env:PROCESSOR_ARCHITECTURE
 } | ConvertTo-Json
 
-Write-Host "Fetching installer." -ForegroundColor Cyan
+Write-Host "Initiating device pairing for $OrgSlug." -ForegroundColor Cyan
+$PairingStart = Invoke-RestMethod -Uri "$PortalUrl/api/v2/pairing/start" -Method POST -ContentType "application/json" -Body $Body
+
+$PairingCode = $PairingStart.pairing_code
+Write-Host "`nPairing Code: $($PairingStart.pairing_code)" -ForegroundColor Yellow
+Write-Host "Approval URL: $($PairingStart.approval_url)" -ForegroundColor Cyan
+Write-Host "Waiting for approval..."
+
+# Poll for Approval
+$SessionToken = $null
+while ($true) {
+    $Status = Invoke-RestMethod -Uri "$PortalUrl/api/v2/pairing/status/$($pairing.pairing_code)" -Method GET
+    
+    switch ($Status.status) {
+        "approved" {
+            Write-Host "Approved! Exchanging tokens..." -ForegroundColor Green
+            $ExchangeBody = @{ exchange_token = $Status.exchange_token } | ConvertTo-Json
+            $Token = Invoke-RestMethod -Uri "$PortalUrl/api/v2/pairing/$PairingCode/exchange" -Method POST -ContentType "application/json" -Body $ExchangeBody
+            
+            $SessionToken = $Token.session_token
+            $SessionToken | Out-File -FilePath $TokenFile
+            break
+        }
+        "denied" {
+            Write-Error "Pairing was denied."
+            exit
+        }
+        "expired" {
+            Write-Error "Pairing expired."
+            exit
+        }
+    }
+    Start-Sleep -Seconds 5
+}
+
+# Use the New Token to Download OpenVPN
+$Headers = @{
+    "Authorization" = "Bearer $SessionToken"
+    "Content-Type"  = "application/json"
+}
+
+# Proceed with existing logic using $Headers for the MSI Metadata request
+Write-Host "Using session token to fetch installer..." -ForegroundColor Cyan
+
 $response = Invoke-RestMethod -Uri "$baseUrl/api/v2/presign-latest" -Method POST -Headers $headers -Body $body
 
 # Set Installer Path to the Public Profile Path
