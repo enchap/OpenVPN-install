@@ -38,7 +38,7 @@ $Body = @{
     instance_id = $InstanceId
     hostname    = $InstanceId
     platform    = "windows"
-    arch        = $env:PROCESSOR_ARCHITECTURE
+    arch        = "-x64"
 } | ConvertTo-Json
 
 Write-Host "Initiating device pairing for $OrgSlug." -ForegroundColor Cyan
@@ -123,3 +123,4 @@ if (Test-Path $ovpnExe) {
 }
 
 Write-Host "Setup complete." -ForegroundColor Green
+
