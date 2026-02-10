@@ -25,9 +25,8 @@ $OrgSlug    = "openvpn-installer"
 $AppId      = "powershell-script"
 $InstanceId = if ($env:COMPUTERNAME) { $env:COMPUTERNAME } else { "unknown" }
 $TokenFile  = $PublicProfilePath
-$Project    = "openvpn"
-$Platform = "windows-x64"
-$LatestFilename = "openvpn-connect.msi"
+$Platform   = "windows"
+$Arch       = "x64"
 
 # Start Pairing
 $Body = @{
@@ -35,10 +34,8 @@ $Body = @{
     app_id          = $AppId
     instance_id     = $InstanceId
     hostname        = $InstanceId
-    project         = $Project
-    tool            = $OrgSlug
-    platform_arch   = $Platform
-    latest_filename = $LatestFilename
+    platform        = $Platform
+    arch            = $Arch
 } | ConvertTo-Json
 
 Write-Host "Initiating device pairing for $OrgSlug." -ForegroundColor Cyan
@@ -82,10 +79,17 @@ $Headers = @{
     "Content-Type"  = "application/json"
 }
 
+$FBody = @{
+    project = "openvpn"
+    tool = "openvpn-installer"
+    platform_arch = "windows-x64"
+    latest_filename = "openvpn-connect.msi"
+} | ConvertTo-Json
+
 # Proceed with existing logic using $Headers for the MSI Metadata request
 Write-Host "Using session token to fetch installer..." -ForegroundColor Cyan
 
-$response = Invoke-RestMethod -Uri "$PortalUrl/api/v2/presign-latest" -Method POST -Headers $headers -Body $body
+$response = Invoke-RestMethod -Uri "$PortalUrl/api/v2/presign-latest" -Method POST -Headers $Headers -Body $FBody
 
 # Set Installer Path to the Public Profile Path
 $InstallerPath = Join-Path -Path $PublicProfilePath -ChildPath $response.filename
