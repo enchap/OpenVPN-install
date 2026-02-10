@@ -8,7 +8,8 @@ if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 
 # File Variables
 $PublicProfilePath = "C:\Data\OpenVPN\"
-$ProfileFileName = "CambridgeVPN.ovpn"
+$TokenFile         = "C:\Data\OpenVPN\token-file"
+$ProfileFileName   = "CambridgeVPN.ovpn"
 $SourceProfilePath = Join-Path -Path $PublicProfilePath -ChildPath $ProfileFileName
 
 # 2. Prepare Directory
@@ -24,7 +25,6 @@ $PortalUrl  = "https://artifacts.digitalsecurityguard.com"
 $OrgSlug    = "en-projects"
 $AppId      = "powershell-script"
 $InstanceId = if ($env:COMPUTERNAME) { $env:COMPUTERNAME } else { "unknown" }
-$TokenFile  = $PublicProfilePath
 $Platform   = "windows"
 $Arch       = "x64"
 
@@ -42,54 +42,60 @@ Write-Host "Initiating device pairing for $OrgSlug." -ForegroundColor Cyan
 $Pairing = Invoke-RestMethod -Uri "$PortalUrl/api/v2/pairing/start" -Method POST -ContentType "application/json" -Body $Body
 
 $PairingCode = $Pairing.pairing_code
-Write-Host "`nPairing Code: $($Pairing.pairing_code)" -ForegroundColor Yellow
-Write-Host "Approval URL: $($pairing.approval_url)" -ForegroundColor Cyan
-Write-Host "Waiting for approval..."
+$PairingURL = $Pairing.pairing_url
+Write-Host "`nPairing Code: $PairingCode" -ForegroundColor Yellow
+Write-Host "Approval URL: $PortalUrl$($PairingURL)" -ForegroundColor Cyan
+Write-Host "`nWaiting for approval..."
 
 # Poll for Approval
 $SessionToken = $null
-while ($true) {
-    $Status = Invoke-RestMethod -Uri "$PortalUrl/api/v2/pairing/status/$($pairing.pairing_code)" -Method GET
+:PairingLoop while ($true) {
+    $Status = Invoke-RestMethod -Uri "$PortalUrl/api/v2/pairing/status/$PairingCode" -Method GET
     
     switch ($Status.status) {
         "approved" {
             Write-Host "Approved! Exchanging tokens..." -ForegroundColor Green
-            $ExchangeBody = @{ exchange_token = $Status.exchange_token } | ConvertTo-Json
-            $Token = Invoke-RestMethod -Uri "$PortalUrl/api/v2/pairing/$PairingCode/exchange" -Method POST -ContentType "application/json" -Body $ExchangeBody
-            
-            $SessionToken = $Token.session_token
-            $SessionToken | Out-File -FilePath $TokenFile
-            break
+            $ExchangeBody = @{
+                pairing_code   = $pairing.pairing_code
+                exchange_token = $Status.exchange_token 
+            } | ConvertTo-Json
+
+            $Token = Invoke-RestMethod -Uri "$PortalUrl/api/v2/pairing/exchange" -Method POST -ContentType "application/json" -Body $ExchangeBody
+            $SessionToken = $token.access_token
+            $token.access_token | Out-File -FilePath $TokenFile -NoNewline -Encoding utf8
+            Write-Host "Token saved to $TokenFile"
+            Write-Host "Expires: $($token.expires_at)"
+            break PairingLoop
         }
         "denied" {
             Write-Error "Pairing was denied."
-            exit
+            exit 1
         }
         "expired" {
             Write-Error "Pairing expired."
-            exit
+            exit 1
         }
     }
     Start-Sleep -Seconds 5
 }
 
-# Use the New Token to Download OpenVPN
+# Add token to authenticate
 $Headers = @{
     "Authorization" = "Bearer $SessionToken"
     "Content-Type"  = "application/json"
 }
 
-$FBody = @{
+# Proceed with existing logic using $Headers for the MSI Metadata request
+Write-Host "Using session token to fetch installer." -ForegroundColor Cyan
+
+$FetchBody = @{
     project = "openvpn"
     tool = "openvpn-installer"
     platform_arch = "windows-x64"
     latest_filename = "openvpn-connect.msi"
 } | ConvertTo-Json
 
-# Proceed with existing logic using $Headers for the MSI Metadata request
-Write-Host "Using session token to fetch installer..." -ForegroundColor Cyan
-
-$response = Invoke-RestMethod -Uri "$PortalUrl/api/v2/presign-latest" -Method POST -Headers $Headers -Body $FBody
+$response = Invoke-RestMethod -Uri "$PortalUrl/api/v2/presign-latest" -Method POST -Headers $Headers -Body $FetchBody
 
 # Set Installer Path to the Public Profile Path
 $InstallerPath = Join-Path -Path $PublicProfilePath -ChildPath $response.filename
