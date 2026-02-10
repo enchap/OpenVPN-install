@@ -20,33 +20,33 @@ if (!(Test-Path -Path $PublicProfilePath)) {
 # 3. Fetch Installer Metadata
 
 # Configuration for Pairing
-$PortalUrl = "https://artifacts.digitalsecurityguard.com"
-$OrgSlug   = "openvpn-installer"
-$AppId     = "powershell-script"
+$PortalUrl  = "https://artifacts.digitalsecurityguard.com"
+$OrgSlug    = "openvpn-installer"
+$AppId      = "powershell-script"
 $InstanceId = if ($env:COMPUTERNAME) { $env:COMPUTERNAME } else { "unknown" }
-$TokenFile = if ($env:TOKEN_FILE) { $env:TOKEN_FILE } else { "$PublicProfilePath" }
-
-if (-not $OrgSlug) {
-    Write-Error "ARTIFACT_PORTAL_ORG environment variable is required."
-    exit 1
-}
+$TokenFile  = $PublicProfilePath
+$Project    = "openvpn"
+$Platform = "windows-x64"
+$LatestFilename = "openvpn-connect.msi"
 
 # Start Pairing
 $Body = @{
-    org_slug    = $OrgSlug
-    app_id      = $AppId
-    instance_id = $InstanceId
-    hostname    = $InstanceId
-    platform    = "windows"
-    arch        = "-x64"
+    org_slug        = $OrgSlug
+    app_id          = $AppId
+    instance_id     = $InstanceId
+    hostname        = $InstanceId
+    project         = $Project
+    tool            = $OrgSlug
+    platform_arch   = $Platform
+    latest_filename = $LatestFilename
 } | ConvertTo-Json
 
 Write-Host "Initiating device pairing for $OrgSlug." -ForegroundColor Cyan
-$PairingStart = Invoke-RestMethod -Uri "$PortalUrl/api/v2/pairing/start" -Method POST -ContentType "application/json" -Body $Body
+$Pairing = Invoke-RestMethod -Uri "$PortalUrl/api/v2/pairing/start" -Method POST -ContentType "application/json" -Body $Body
 
-$PairingCode = $PairingStart.pairing_code
-Write-Host "`nPairing Code: $($PairingStart.pairing_code)" -ForegroundColor Yellow
-Write-Host "Approval URL: $($PairingStart.approval_url)" -ForegroundColor Cyan
+$PairingCode = $Pairing.pairing_code
+Write-Host "`nPairing Code: $($Pairing.pairing_code)" -ForegroundColor Yellow
+Write-Host "Approval URL: $($Pairing.approval_url)" -ForegroundColor Cyan
 Write-Host "Waiting for approval..."
 
 # Poll for Approval
@@ -85,7 +85,7 @@ $Headers = @{
 # Proceed with existing logic using $Headers for the MSI Metadata request
 Write-Host "Using session token to fetch installer..." -ForegroundColor Cyan
 
-$response = Invoke-RestMethod -Uri "$baseUrl/api/v2/presign-latest" -Method POST -Headers $headers -Body $body
+$response = Invoke-RestMethod -Uri "$PortalUrl/api/v2/presign-latest" -Method POST -Headers $headers -Body $body
 
 # Set Installer Path to the Public Profile Path
 $InstallerPath = Join-Path -Path $PublicProfilePath -ChildPath $response.filename
@@ -123,4 +123,3 @@ if (Test-Path $ovpnExe) {
 }
 
 Write-Host "Setup complete." -ForegroundColor Green
-
